@@ -27,21 +27,31 @@ async function getModel() {
   const config: Record<string, any> = { apiKey };
   if (baseURL) config.baseURL = baseURL;
 
-  const models = await loadModels(provider, config);
-
   let selectedModel: any;
-  if (modelName && models) {
-    selectedModel = models.chat.find(
-      (m: any) => m.id === modelName || m.name === modelName,
-    );
-  }
-  if (!selectedModel && models) {
-    selectedModel = models.chat[0];
+
+  try {
+    const models = await loadModels(provider, config);
+    if (models?.chat?.length) {
+      if (modelName) {
+        selectedModel = models.chat.find(
+          (m: any) => m.id === modelName || m.name === modelName,
+        );
+      }
+      if (!selectedModel) {
+        selectedModel = models.chat[0];
+      }
+    }
+  } catch (err: any) {
+    console.warn(`  ⚠️  loadModels failed: ${err.message}, falling back to default`);
   }
 
-  console.log(
-    `  LLM: Using provider "${provider}", model "${selectedModel.id || selectedModel.name}"`,
-  );
+  // Fallback: if we couldn't load a model list, construct one manually
+  if (!selectedModel) {
+    selectedModel = { id: modelName || 'gpt-4o-mini', name: modelName || 'gpt-4o-mini' };
+  }
+
+  const modelId = selectedModel.id || selectedModel.name || 'unknown';
+  console.log(`  LLM: Using provider "${provider}", model "${modelId}"`);
 
   _model = igniteModel(provider, selectedModel, config);
   return _model;
