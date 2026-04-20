@@ -1,13 +1,12 @@
 import { searchPackages, getPackument, type SearchResults } from 'query-registry';
-import pLimit from 'p-limit';
 import type { PackageData } from './types.js';
 import { parseGitHubRepo } from './parser.js';
 import { fetchReadme, fetchStars, githubLimit } from './github.js';
 
-export const SEARCH_QUERY = 'keywords:pi-package';
+const SEARCH_QUERY = 'keywords:pi-package';
 const SEARCH_PAGE_SIZE = 250;
-const FETCH_DELAY_MS = 300;
 const SEARCH_DELAY_MS = 500;
+const FETCH_DELAY_MS = 300;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
@@ -78,15 +77,14 @@ async function fetchPackageReadme(name: string, repoUrl: string | null): Promise
 }
 
 /**
- * Process a single search result into a PackageData object.
+ * Fetch full metadata for a single search result.
+ * Returns a PackageData with readme but no summary (summary is added later).
  */
-export async function processPackage(
+export async function fetchPackageData(
   searchObj: SearchResults['objects'][number],
 ): Promise<PackageData> {
   const pkg = searchObj.package;
   const name = pkg.name;
-
-  console.log(`  📦 Processing ${name}@${pkg.version}`);
 
   const repoUrl = pkg.links?.repository || null;
   const { readme, source, stars } = await fetchPackageReadme(name, repoUrl);
@@ -106,80 +104,10 @@ export async function processPackage(
     },
     readme,
     readmeSource: source,
-    summary: null, // filled in later by LLM
+    summary: null,
     stars,
     fetchedAt: new Date().toISOString(),
   };
 }
 
-/**
- * Fetch full metadata for all given search results.
- * Skips packages already in the skip set.
- */
-export interface FetchCallbacks {
-  onStart?: (name: string) => void;
-  onDone?: (name: string) => void;
-}
-
-export async function fetchPackages(
-  searchResults: Map<string, SearchResults['objects'][number]>,
-  skipNames: Set<string>,
-  concurrency: number,
-  callbacks?: FetchCallbacks,
-): Promise<PackageData[]> {
-  const limit = pLimit({ concurrency });
-  const toFetch: SearchResults['objects'][number][] = [];
-
-  for (const [name, obj] of searchResults) {
-    if (skipNames.has(name)) {
-      console.log(`  ⏭️  Skipping ${name} (already at current version)`);
-      continue;
-    }
-    toFetch.push(obj);
-  }
-
-  if (toFetch.length === 0) {
-    console.log('  ✅ All packages up to date');
-    return [];
-  }
-
-  console.log(`\n📦 Fetching ${toFetch.length} package(s)...\n`);
-
-  const results = await Promise.all(
-    toFetch.map((obj) =>
-      limit(async () => {
-        try {
-          callbacks?.onStart?.(obj.package.name);
-          await sleep(FETCH_DELAY_MS);
-          const result = await processPackage(obj);
-          callbacks?.onDone?.(obj.package.name);
-          return result;
-        } catch (err: any) {
-          console.error(`  ❌ Failed to process ${obj.package.name}: ${err.message}`);
-          return {
-            name: obj.package.name,
-            version: obj.package.version,
-            description: obj.package.description || null,
-            keywords: obj.package.keywords || [],
-            date: obj.package.date,
-            publisher: obj.package.publisher?.username || null,
-            links: {
-              npm: obj.package.links?.npm || `https://www.npmjs.com/package/${obj.package.name}`,
-              homepage: obj.package.links?.homepage || null,
-              repository: obj.package.links?.repository || null,
-              bugs: obj.package.links?.bugs || null,
-            },
-            readme: null,
-            readmeSource: null,
-            summary: null,
-            stars: null,
-            error: err.message,
-            fetchedAt: new Date().toISOString(),
-          } as PackageData;
-        }
-      }),
-    ),
-  );
-
-  return results;
-}
+export { SEARCH_QUERY };

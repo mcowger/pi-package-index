@@ -5,7 +5,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { loadState, saveState, isReviewed, markReviewed } from './state.js';
-import { searchNpmPackages, fetchPackages, SEARCH_QUERY } from './npm.js';
+import { searchNpmPackages, fetchPackageData, SEARCH_QUERY } from './npm.js';
+import type { SearchResults } from 'query-registry';
 import { summarizeReadme } from './llm.js';
 import { writePackagesJson, renderIndex } from './render.js';
 import { githubLimit } from './github.js';
@@ -15,7 +16,7 @@ import {
   setCurrentPackage, addCurrentLlm, removeCurrentLlm,
   logLine,
 } from './dashboard.js';
-import type { PackageData, PackagesJson, ReviewedPackage } from './types.js';
+import type { PackageData, PackagesJson } from './types.js';
 
 // ── Configuration ──────────────────────────────────────────
 const OUTPUT_DIR = process.env.OUTPUT_DIR || './output';
@@ -25,6 +26,7 @@ const LLM_CONCURRENCY = parseInt(process.env.LLM_CONCURRENCY || '3', 10);
 const CRON_SCHEDULE = process.env.CRON_SCHEDULE || '';
 const GIT_REPO_URL = process.env.GIT_REPO_URL || '';
 const GIT_REPO_DIR = process.env.GIT_REPO_DIR || '/repo';
+const FETCH_DELAY_MS = 300;
 
 function validateEnv(): void {
   const required = ['LLM_API_KEY'];
@@ -143,29 +145,6 @@ async function gitCommitAndPush(message: string): Promise<void> {
 
 // ── Core pipeline ───────────────────────────────────────────
 
-async function runSummaries(packages: PackageData[]): Promise<PackageData[]> {
-  return await Promise.all(
-    packages.map((pkg) =>
-      llmLimit(async () => {
-        if (!pkg.readme) return pkg;
-
-        addCurrentLlm(pkg.name);
-        const summary = await summarizeReadme(pkg.readme, pkg.name);
-        removeCurrentLlm(pkg.name);
-        incLlmDone();
-
-        if (summary) {
-          logLine(`✅ Summarized ${pkg.name}`);
-        } else {
-          logLine(`⚠️  Summarization failed for ${pkg.name}`);
-        }
-
-        return { ...pkg, summary };
-      }),
-    ),
-  );
-}
-
 async function fetch(): Promise<void> {
   validateEnv();
 
@@ -182,33 +161,90 @@ async function fetch(): Promise<void> {
     }
   }
 
-  const toFetchCount = searchResults.size - skipNames.size;
+  const toFetch: Array<SearchResults['objects'][number]> = [];
+  for (const [name, obj] of searchResults) {
+    if (!skipNames.has(name)) {
+      toFetch.push(obj);
+    }
+  }
 
-  if (toFetchCount === 0 && skipNames.size === 0) {
+  if (toFetch.length === 0 && searchResults.size === 0) {
     console.log('✅ No packages found.');
     return;
   }
 
-  if (toFetchCount === 0) {
+  if (toFetch.length === 0) {
     console.log(`\n✅ All ${skipNames.size} package(s) up to date.`);
     return;
   }
 
+  console.log(`\n📦 Fetching + summarizing ${toFetch.length} package(s)...\n`);
+
   initDashboard(fetchLimit, llmLimit, githubLimit);
-  setPackageTotal(toFetchCount);
+  setPackageTotal(toFetch.length);
 
-  const newPackages = await fetchPackages(searchResults, skipNames, FETCH_CONCURRENCY, {
-    onStart: (name) => setCurrentPackage(name),
-    onDone: () => incPackagesDone(),
-  });
+  // For each package: fetch (limited) → summarize (limited) → result
+  const workPromises = toFetch.map((obj) =>
+    (async () => {
+      // ── Fetch phase ──
+      setCurrentPackage(obj.package.name);
+      await sleep(FETCH_DELAY_MS);
 
-  console.log('\n🧠 Running LLM summarization...\n');
-  const summarized = await runSummaries(newPackages);
+      let pkg: PackageData;
+      try {
+        pkg = await fetchLimit(() => fetchPackageData(obj));
+      } catch (err: any) {
+        console.error(`  ❌ Failed to fetch ${obj.package.name}: ${err.message}`);
+        pkg = {
+          name: obj.package.name,
+          version: obj.package.version,
+          description: obj.package.description || null,
+          keywords: obj.package.keywords || [],
+          date: obj.package.date,
+          publisher: obj.package.publisher?.username || null,
+          links: {
+            npm: obj.package.links?.npm || `https://www.npmjs.com/package/${obj.package.name}`,
+            homepage: obj.package.links?.homepage || null,
+            repository: obj.package.links?.repository || null,
+            bugs: obj.package.links?.bugs || null,
+          },
+          readme: null,
+          readmeSource: null,
+          summary: null,
+          stars: null,
+          error: err.message,
+          fetchedAt: new Date().toISOString(),
+        };
+      }
+
+      incPackagesDone();
+
+      // ── Summarize phase (chains immediately after fetch) ──
+      if (pkg.readme) {
+        addCurrentLlm(pkg.name);
+        const summary = await llmLimit(() => summarizeReadme(pkg.readme!, pkg.name));
+        removeCurrentLlm(pkg.name);
+        incLlmDone();
+
+        if (summary) {
+          logLine(`✅ Summarized ${pkg.name}`);
+        } else {
+          logLine(`⚠️  Summarization failed for ${pkg.name}`);
+        }
+
+        pkg = { ...pkg, summary };
+      }
+
+      return pkg;
+    })(),
+  );
+
+  const newPackages = await Promise.all(workPromises);
 
   stopDashboard();
 
   // Update state
-  for (const pkg of summarized) {
+  for (const pkg of newPackages) {
     const updated = markReviewed(state, {
       name: pkg.name,
       version: pkg.version,
@@ -220,7 +256,7 @@ async function fetch(): Promise<void> {
 
   // Merge with existing packages.json if present
   const existing = readExistingPackages();
-  const merged = mergePackages(existing, summarized);
+  const merged = mergePackages(existing, newPackages);
 
   const packagesJson: PackagesJson = {
     generatedAt: new Date().toISOString(),
@@ -231,6 +267,10 @@ async function fetch(): Promise<void> {
 
   const jsonPath = writePackagesJson(packagesJson, OUTPUT_DIR);
   console.log(`\n💾 packages.json → ${jsonPath}`);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
 }
 
 function readExistingPackages(): PackageData[] {
