@@ -1,0 +1,509 @@
+{
+  "count": 84,
+  "failures": [
+    {
+      "name": "@andrewxhill/pi-be-kind",
+      "version": "0.3.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:32.518Z"
+    },
+    {
+      "name": "@anthaathi/pi-companion-extensions",
+      "version": "0.2.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:33.101Z"
+    },
+    {
+      "name": "@artale/pi-api",
+      "version": "1.0.1",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:32.859Z"
+    },
+    {
+      "name": "@artale/pi-bench",
+      "version": "1.1.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:33.268Z"
+    },
+    {
+      "name": "@artale/pi-changelog",
+      "version": "1.1.1",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:33.623Z"
+    },
+    {
+      "name": "@artale/pi-comply",
+      "version": "1.4.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:33.840Z"
+    },
+    {
+      "name": "@artale/pi-cost",
+      "version": "1.1.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:33.718Z"
+    },
+    {
+      "name": "@artale/pi-cron",
+      "version": "1.0.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:34.349Z"
+    },
+    {
+      "name": "@artale/pi-db",
+      "version": "1.0.1",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:34.447Z"
+    },
+    {
+      "name": "@artale/pi-deps",
+      "version": "1.1.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:34.644Z"
+    },
+    {
+      "name": "@artale/pi-diff",
+      "version": "1.1.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:35.098Z"
+    },
+    {
+      "name": "@artale/pi-doc",
+      "version": "1.0.1",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:35.193Z"
+    },
+    {
+      "name": "@artale/pi-envman",
+      "version": "1.0.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:35.434Z"
+    },
+    {
+      "name": "@artale/pi-git-graph",
+      "version": "1.1.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:35.555Z"
+    },
+    {
+      "name": "@artale/pi-git-hooks",
+      "version": "1.0.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:35.984Z"
+    },
+    {
+      "name": "@artale/pi-hex",
+      "version": "1.1.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:36.175Z"
+    },
+    {
+      "name": "@artale/pi-infra",
+      "version": "1.1.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:36.292Z"
+    },
+    {
+      "name": "@artale/pi-maze",
+      "version": "1.1.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:36.719Z"
+    },
+    {
+      "name": "@artale/pi-metrics",
+      "version": "1.0.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:36.962Z"
+    },
+    {
+      "name": "@artale/pi-migrate",
+      "version": "1.0.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:37.024Z"
+    },
+    {
+      "name": "@artale/pi-notify",
+      "version": "1.0.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:37.498Z"
+    },
+    {
+      "name": "@artale/pi-perf",
+      "version": "1.0.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:37.692Z"
+    },
+    {
+      "name": "@artale/pi-port",
+      "version": "1.1.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:37.762Z"
+    },
+    {
+      "name": "@artale/pi-scaffold",
+      "version": "1.1.1",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:38.197Z"
+    },
+    {
+      "name": "@artale/pi-sentinel",
+      "version": "2.6.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:38.428Z"
+    },
+    {
+      "name": "@artale/pi-stack",
+      "version": "1.2.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:38.552Z"
+    },
+    {
+      "name": "@artale/pi-sudoku",
+      "version": "1.1.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:39.083Z"
+    },
+    {
+      "name": "@artale/pi-test",
+      "version": "1.1.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:38.914Z"
+    },
+    {
+      "name": "@artale/pi-typing",
+      "version": "1.1.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:39.288Z"
+    },
+    {
+      "name": "@artale/pi-wordle",
+      "version": "1.1.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:39.676Z"
+    },
+    {
+      "name": "@bonsai-ai/pi-extension",
+      "version": "0.1.2",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:39.526Z"
+    },
+    {
+      "name": "@feniix/pi-conductor",
+      "version": "0.1.1",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:40.220Z"
+    },
+    {
+      "name": "@feniix/pi-statusline",
+      "version": "0.4.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:40.445Z"
+    },
+    {
+      "name": "@fnnm/pi-ast-grep",
+      "version": "0.1.1",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:41.025Z"
+    },
+    {
+      "name": "@gugu910/pi-slack-bridge",
+      "version": "0.1.3",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:40.970Z"
+    },
+    {
+      "name": "@guwidoe/pi-web-fetch",
+      "version": "0.1.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:40.886Z"
+    },
+    {
+      "name": "@guwidoe/pi-web-search",
+      "version": "0.1.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:41.329Z"
+    },
+    {
+      "name": "@hyperprior/pi-shared",
+      "version": "0.1.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:41.458Z"
+    },
+    {
+      "name": "@ifiokjr/oh-pi-extensions",
+      "version": "0.2.2",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:41.491Z"
+    },
+    {
+      "name": "@ifiokjr/oh-pi-prompts",
+      "version": "0.2.2",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:41.791Z"
+    },
+    {
+      "name": "@ifiokjr/oh-pi-skills",
+      "version": "0.2.2",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:41.891Z"
+    },
+    {
+      "name": "@ifiokjr/oh-pi-themes",
+      "version": "0.2.2",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:41.968Z"
+    },
+    {
+      "name": "@pi-orca/agents",
+      "version": "0.0.2-dev.20260413162335",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:42.635Z"
+    },
+    {
+      "name": "@pi-orca/cleanup",
+      "version": "0.0.2-dev.20260413162335",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:42.623Z"
+    },
+    {
+      "name": "@pi-orca/messages",
+      "version": "0.0.2-dev.20260413162335",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:42.721Z"
+    },
+    {
+      "name": "@pi-orca/models",
+      "version": "0.0.2-dev.20260413162335",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:43.362Z"
+    },
+    {
+      "name": "@pi-orca/profiles",
+      "version": "0.0.2-dev.20260413162335",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:43.328Z"
+    },
+    {
+      "name": "@pi-orca/tasks",
+      "version": "0.0.2-dev.20260413162335",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:43.452Z"
+    },
+    {
+      "name": "@pi-orca/teams",
+      "version": "0.0.2-dev.20260413162335",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:44.205Z"
+    },
+    {
+      "name": "@sirsyorrz/pi-statusline",
+      "version": "1.0.1",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:44.325Z"
+    },
+    {
+      "name": "@treentity/pi-imessage",
+      "version": "0.1.1",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:44.273Z"
+    },
+    {
+      "name": "@vpellegrino/pi-skills",
+      "version": "1.0.5",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:44.965Z"
+    },
+    {
+      "name": "pi-agent-pack",
+      "version": "0.1.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:44.626Z"
+    },
+    {
+      "name": "pi-cline-free-models",
+      "version": "0.2.3",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:44.661Z"
+    },
+    {
+      "name": "pi-image-gen-google",
+      "version": "0.1.2",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:44.954Z"
+    },
+    {
+      "name": "pi-image-gen-openai",
+      "version": "0.1.2",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:44.987Z"
+    },
+    {
+      "name": "pi-image-gen-recraft",
+      "version": "0.1.2",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:45.301Z"
+    },
+    {
+      "name": "pi-image-gen-replicate",
+      "version": "0.1.2",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:45.304Z"
+    },
+    {
+      "name": "pi-image-gen-router",
+      "version": "0.1.2",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:45.318Z"
+    },
+    {
+      "name": "pi-image-gen-together",
+      "version": "0.1.2",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:45.633Z"
+    },
+    {
+      "name": "pi-image-gen-xai",
+      "version": "0.1.2",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:45.659Z"
+    },
+    {
+      "name": "pi-models-dev-providers",
+      "version": "1.0.1",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:45.659Z"
+    },
+    {
+      "name": "pi-opinionated-glm",
+      "version": "0.2.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:45.966Z"
+    },
+    {
+      "name": "pi-opinionated-mimo",
+      "version": "0.1.2",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:46.009Z"
+    },
+    {
+      "name": "pi-opinionated-zenmux",
+      "version": "0.1.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:45.991Z"
+    },
+    {
+      "name": "pi-permission",
+      "version": "1.0.11",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:46.729Z"
+    },
+    {
+      "name": "pi-redteam",
+      "version": "1.0.2",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:46.326Z"
+    },
+    {
+      "name": "pi-sec",
+      "version": "0.0.1",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:46.739Z"
+    },
+    {
+      "name": "pi-shell-completions",
+      "version": "0.1.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:47.172Z"
+    },
+    {
+      "name": "pi-threads",
+      "version": "0.2.1",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:47.492Z"
+    },
+    {
+      "name": "pi-websearch-brave",
+      "version": "0.2.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:47.070Z"
+    },
+    {
+      "name": "pi-websearch-exa",
+      "version": "0.2.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:47.414Z"
+    },
+    {
+      "name": "pi-websearch-firecrawl",
+      "version": "0.2.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:47.500Z"
+    },
+    {
+      "name": "pi-websearch-jina",
+      "version": "0.2.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:47.754Z"
+    },
+    {
+      "name": "pi-websearch-linkup",
+      "version": "0.2.1",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:47.822Z"
+    },
+    {
+      "name": "pi-websearch-parallel",
+      "version": "0.2.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:47.834Z"
+    },
+    {
+      "name": "pi-websearch-perplexity",
+      "version": "0.2.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:48.086Z"
+    },
+    {
+      "name": "pi-websearch-router",
+      "version": "0.2.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:48.155Z"
+    },
+    {
+      "name": "pi-websearch-serpapi",
+      "version": "0.2.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:48.169Z"
+    },
+    {
+      "name": "pi-websearch-serper",
+      "version": "0.2.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:48.423Z"
+    },
+    {
+      "name": "pi-websearch-tavily",
+      "version": "0.2.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:48.487Z"
+    },
+    {
+      "name": "pi-websearch-valyu",
+      "version": "0.2.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:48.494Z"
+    },
+    {
+      "name": "pi-websearch-you",
+      "version": "0.2.0",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:48.768Z"
+    },
+    {
+      "name": "toenobu-agent",
+      "version": "0.2.1",
+      "error": "No README available",
+      "fetchedAt": "2026-04-20T21:29:48.827Z"
+    }
+  ]
+}

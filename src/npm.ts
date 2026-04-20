@@ -60,18 +60,30 @@ async function fetchPackageReadme(name: string, repoUrl: string | null): Promise
     if (packument.readme && packument.readme.length >= 200) {
       return { readme: packument.readme, source: 'npm', stars: null };
     }
+    if (packument.readme) {
+      console.log(`    📄 ${name}: npm README too short (${packument.readme.length} chars), trying GitHub...`);
+    } else {
+      console.log(`    📄 ${name}: no README on npm, trying GitHub...`);
+    }
   } catch (err: any) {
-    console.warn(`  ⚠️  Failed to fetch packument for ${name}: ${err.message}`);
+    console.warn(`    ⚠️  ${name}: npm packument failed (${err.message}), trying GitHub...`);
   }
 
   // Fall back to GitHub
   const gh = parseGitHubRepo(repoUrl);
   if (!gh) {
+    console.log(`    📄 ${name}: no repository link, giving up`);
     return { readme: null, source: null, stars: null };
   }
 
   const readme = await githubLimit(() => fetchReadme(gh.owner, gh.repo));
   const stars = await githubLimit(() => fetchStars(gh.owner, gh.repo));
+
+  if (readme) {
+    console.log(`    ✅ ${name}: README from GitHub (${readme.length} chars)`);
+  } else {
+    console.log(`    ❌ ${name}: no README on GitHub either (${gh.owner}/${gh.repo})`);
+  }
 
   return { readme, source: readme ? 'github' : null, stars };
 }
