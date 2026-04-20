@@ -263,13 +263,14 @@ async function fetch(): Promise<void> {
       // ── Progressive save ──
       saver.markComplete(pkg);
 
-      // Update state (in-memory, flushed to disk periodically by caller)
+      // Update state (saved to disk incrementally)
       const updated = markReviewed(state, {
         name: pkg.name,
         version: pkg.version,
         fetchedAt: pkg.fetchedAt,
       });
       Object.assign(state, updated);
+      saveState(STATE_FILE, state);
 
       return pkg;
     })(),
