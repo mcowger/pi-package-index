@@ -69,6 +69,23 @@ async function fetchRawPackumentReadme(name: string): Promise<string | null> {
   }
 }
 
+async function fetchUnpkgReadme(name: string): Promise<string | null> {
+  for (const filename of ['README.md', 'readme.md', 'Readme.md']) {
+    try {
+      const res = await fetch(`https://unpkg.com/${name}@latest/${filename}`, { redirect: 'follow' });
+      if (res.ok) {
+        const text = await res.text();
+        if (text.length > 0 && !text.startsWith('<!DOCTYPE')) {
+          return text;
+        }
+      }
+    } catch {
+      // try next filename
+    }
+  }
+  return null;
+}
+
 async function fetchPackageReadme(name: string, repoUrl: string | null): Promise<{ readme: string | null; source: 'npm' | 'github' | null; stars: number | null }> {
   let npmReadme: string | null = null;
 
@@ -102,6 +119,12 @@ async function fetchPackageReadme(name: string, repoUrl: string | null): Promise
   // Fall back to GitHub
   const gh = parseGitHubRepo(repoUrl);
   if (!gh) {
+    // No GitHub repo — try unpkg before giving up
+    const unpkgReadme = await fetchUnpkgReadme(name);
+    if (unpkgReadme) {
+      console.log(`    ✅ ${name}: README from unpkg (${unpkgReadme.length} chars)`);
+      return { readme: unpkgReadme, source: 'npm', stars: null };
+    }
     if (npmReadme) {
       console.log(`    ✅ ${name}: using short npm README (${npmReadme.length} chars)`);
       return { readme: npmReadme, source: 'npm', stars: null };
@@ -118,12 +141,19 @@ async function fetchPackageReadme(name: string, repoUrl: string | null): Promise
     return { readme, source: 'github' as const, stars };
   }
 
+  // Try unpkg as last resort
+  const unpkgReadme = await fetchUnpkgReadme(name);
+  if (unpkgReadme) {
+    console.log(`    ✅ ${name}: README from unpkg (${unpkgReadme.length} chars)`);
+    return { readme: unpkgReadme, source: 'npm', stars };
+  }
+
   if (npmReadme) {
     console.log(`    ✅ ${name}: using short npm README (${npmReadme.length} chars)`);
     return { readme: npmReadme, source: 'npm', stars };
   }
 
-  console.log(`    ❌ ${name}: no README on GitHub either (${gh.owner}/${gh.repo})`);
+  console.log(`    ❌ ${name}: no README anywhere (${gh.owner}/${gh.repo})`);
   return { readme: null, source: null, stars };
 }
 
