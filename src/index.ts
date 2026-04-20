@@ -8,8 +8,9 @@ import { loadState, saveState, isReviewed, markReviewed } from './state.js';
 import { searchNpmPackages, fetchPackageData, SEARCH_QUERY } from './npm.js';
 import type { SearchResults } from 'query-registry';
 import { summarizeReadme } from './llm.js';
-import { writePackagesJson, renderIndex } from './render.js';
+import { renderIndex } from './render.js';
 import { githubLimit } from './github.js';
+import { ProgressiveSaver } from './progressive.js';
 import {
   initDashboard, stopDashboard,
   setPackageTotal, incPackagesDone, incLlmDone,
@@ -180,10 +181,25 @@ async function fetch(): Promise<void> {
 
   console.log(`\n📦 Fetching + summarizing ${toFetch.length} package(s)...\n`);
 
+  // Progressive saver: writes packages.json every N completions + on timer
+  const saver = new ProgressiveSaver(OUTPUT_DIR, SEARCH_QUERY, 10, 10_000);
+  saver.seed(readExistingPackages());
+  saver.start();
+
+  // Ensure we flush on interrupt
+  const flushOnExit = (): void => {
+    console.log('\n💾 Flushing progress...');
+    saver.stop();
+    saveState(STATE_FILE, state);
+    process.exit(0);
+  };
+  process.once('SIGINT', flushOnExit);
+  process.once('SIGTERM', flushOnExit);
+
   initDashboard(fetchLimit, llmLimit, githubLimit);
   setPackageTotal(toFetch.length);
 
-  // For each package: fetch (limited) → summarize (limited) → result
+  // For each package: fetch (limited) → summarize (limited) → save progressively
   const workPromises = toFetch.map((obj) =>
     (async () => {
       // ── Fetch phase ──
@@ -235,38 +251,34 @@ async function fetch(): Promise<void> {
         pkg = { ...pkg, summary };
       }
 
+      // ── Progressive save ──
+      saver.markComplete(pkg);
+
+      // Update state (in-memory, flushed to disk periodically by caller)
+      const updated = markReviewed(state, {
+        name: pkg.name,
+        version: pkg.version,
+        fetchedAt: pkg.fetchedAt,
+      });
+      Object.assign(state, updated);
+
       return pkg;
     })(),
   );
 
-  const newPackages = await Promise.all(workPromises);
+  await Promise.all(workPromises);
 
   stopDashboard();
+  saver.stop();
 
-  // Update state
-  for (const pkg of newPackages) {
-    const updated = markReviewed(state, {
-      name: pkg.name,
-      version: pkg.version,
-      fetchedAt: pkg.fetchedAt,
-    });
-    Object.assign(state, updated);
-  }
+  // Remove interrupt handlers so daemon mode can set its own
+  process.off('SIGINT', flushOnExit);
+  process.off('SIGTERM', flushOnExit);
+
+  // Final state save
   saveState(STATE_FILE, state);
 
-  // Merge with existing packages.json if present
-  const existing = readExistingPackages();
-  const merged = mergePackages(existing, newPackages);
-
-  const packagesJson: PackagesJson = {
-    generatedAt: new Date().toISOString(),
-    query: SEARCH_QUERY,
-    total: merged.length,
-    packages: merged,
-  };
-
-  const jsonPath = writePackagesJson(packagesJson, OUTPUT_DIR);
-  console.log(`\n💾 packages.json → ${jsonPath}`);
+  console.log(`\n💾 packages.json → ${path.join(OUTPUT_DIR, 'packages.json')}`);
 }
 
 function sleep(ms: number): Promise<void> {
@@ -281,17 +293,6 @@ function readExistingPackages(): PackageData[] {
   } catch {
     return [];
   }
-}
-
-function mergePackages(existing: PackageData[], fresh: PackageData[]): PackageData[] {
-  const map = new Map<string, PackageData>();
-  for (const p of existing) {
-    map.set(p.name, p);
-  }
-  for (const p of fresh) {
-    map.set(p.name, p);
-  }
-  return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
 }
 
 async function render(): Promise<void> {
