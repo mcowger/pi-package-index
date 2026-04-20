@@ -203,35 +203,35 @@ async function fetch(): Promise<void> {
   const workPromises = toFetch.map((obj) =>
     (async () => {
       // ── Fetch phase ──
-      setCurrentPackage(obj.package.name);
-      await sleep(FETCH_DELAY_MS);
-
-      let pkg: PackageData;
-      try {
-        pkg = await fetchLimit(() => fetchPackageData(obj));
-      } catch (err: any) {
-        console.error(`  ❌ Failed to fetch ${obj.package.name}: ${err.message}`);
-        pkg = {
-          name: obj.package.name,
-          version: obj.package.version,
-          description: obj.package.description || null,
-          keywords: obj.package.keywords || [],
-          date: obj.package.date,
-          publisher: obj.package.publisher?.username || null,
-          links: {
-            npm: obj.package.links?.npm || `https://www.npmjs.com/package/${obj.package.name}`,
-            homepage: obj.package.links?.homepage || null,
-            repository: obj.package.links?.repository || null,
-            bugs: obj.package.links?.bugs || null,
-          },
-          readme: null,
-          readmeSource: null,
-          summary: null,
-          stars: null,
-          error: err.message,
-          fetchedAt: new Date().toISOString(),
-        };
-      }
+      let pkg = await fetchLimit(async () => {
+        setCurrentPackage(obj.package.name);
+        await sleep(FETCH_DELAY_MS);
+        try {
+          return await fetchPackageData(obj);
+        } catch (err: any) {
+          console.error(`  ❌ Failed to fetch ${obj.package.name}: ${err.message}`);
+          return {
+            name: obj.package.name,
+            version: obj.package.version,
+            description: obj.package.description || null,
+            keywords: obj.package.keywords || [],
+            date: obj.package.date,
+            publisher: obj.package.publisher?.username || null,
+            links: {
+              npm: obj.package.links?.npm || `https://www.npmjs.com/package/${obj.package.name}`,
+              homepage: obj.package.links?.homepage || null,
+              repository: obj.package.links?.repository || null,
+              bugs: obj.package.links?.bugs || null,
+            },
+            readme: null,
+            readmeSource: null,
+            summary: null,
+            stars: null,
+            error: err.message,
+            fetchedAt: new Date().toISOString(),
+          } as PackageData;
+        }
+      });
 
       incPackagesDone();
 
