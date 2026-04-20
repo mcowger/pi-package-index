@@ -9,6 +9,7 @@ bun install
 bun run start          # fetch + render + git push (one-shot)
 bun run start fetch    # fetch only (npm API + LLM)
 bun run start render   # render existing packages.json → HTML
+bun run start repair   # re-fetch packages with errors or missing READMEs
 bun run start daemon   # run on CRON_SCHEDULE, fetch + render + push each cycle
 ```
 
@@ -50,8 +51,13 @@ The endpoint supports pagination (`size` max 250, `from` offset). The tool loops
 
 ## README Retrieval
 
-1. **Primary**: Fetch the packument via `getPackument(name)` and read the top-level `readme` field.
-2. **Fallback**: If the packument has no README (or it's <200 chars), parse the repository URL and fetch the README via the GitHub API (`repos.getReadme`).
+The tool tries multiple sources in order to find a README for each package:
+
+1. **npm packument** via `getPackument(name)` — fast, typed, works for most packages.
+2. **Raw registry** — direct `fetch()` to `registry.npmjs.org` when Zod validation rejects the packument.
+3. **GitHub API** — fetches README from the linked repository.
+4. **unpkg.com** — extracts `README.md` directly from the published tarball, catches packages where the registry never extracted the README.
+5. **Short npm README** — uses whatever npm had even if < 200 chars.
 
 ## LLM Summarization
 
@@ -101,6 +107,9 @@ Authentication uses `GH_TOKEN` embedded in the HTTPS URL.
 | `GIT_REPO_DIR` | No | `/repo` | Local clone path |
 | `FETCH_CONCURRENCY` | No | `3` | Max parallel npm packument fetches |
 | `LLM_CONCURRENCY` | No | `3` | Max parallel LLM calls |
+| `NO_DASHBOARD` | No | — | Set to `1` to force plain console logs |
+| `LIMIT` | No | — | Max packages to fetch (for testing) |
+| `EXIT_ON_ERROR` | No | — | Set to `1` to exit immediately on any error |
 
 ## Development
 
@@ -110,6 +119,24 @@ bun -e "import { searchNpmPackages } from './src/npm.js'; const r = await search
 
 # Test render without fetching
 bun run start render
+```
+
+## Docker
+
+```bash
+docker build -t pi-package-index .
+
+# One-shot fetch + render
+docker run --rm -v $PWD/state:/repo/state -v $PWD/output:/repo/output --env-file .env pi-package-index
+
+# Daemon mode
+docker run -d --name pi-package-index -v $PWD/state:/repo/state -v $PWD/output:/repo/output --env-file .env pi-package-index daemon
+
+# Fetch only
+docker run --rm -v $PWD/state:/repo/state -v $PWD/output:/repo/output --env-file .env pi-package-index fetch
+
+# Repair
+docker run --rm -v $PWD/state:/repo/state -v $PWD/output:/repo/output --env-file .env pi-package-index repair
 ```
 
 To modify the HTML design, edit `src/html.ts` and run `bun run start render` — no API calls needed.
