@@ -110,4 +110,35 @@ export async function fetchPackageData(
   };
 }
 
+/**
+ * Build a synthetic search result object from existing PackageData.
+ * Used by the repair command to re-fetch packages that previously failed.
+ */
+export function buildSearchObjFromPackage(pkg: { name: string; version: string; description: string | null; keywords: string[]; date: string; publisher: string | null; links: { npm: string; homepage: string | null; repository: string | null; bugs: string | null } }): SearchResults['objects'][number] {
+  return {
+    package: {
+      name: pkg.name,
+      version: pkg.version,
+      description: pkg.description,
+      keywords: pkg.keywords,
+      date: pkg.date,
+      publisher: pkg.publisher ? { username: pkg.publisher, email: '' } : undefined,
+      links: {
+        npm: pkg.links.npm,
+        homepage: pkg.links.homepage || undefined,
+        repository: pkg.links.repository || undefined,
+        bugs: pkg.links.bugs || undefined,
+      },
+      // required by type but not used by fetchPackageData
+      maintainers: [],
+    },
+    score: { final: 0, detail: { quality: 0, popularity: 0, maintenance: 0 } },
+    searchScore: 0,
+    downloads: { monthly: 0, weekly: 0 },
+    dependents: 0,
+    updated: pkg.date,
+    flags: { insecure: false },
+  } as unknown as SearchResults['objects'][number];
+}
+
 export { SEARCH_QUERY };

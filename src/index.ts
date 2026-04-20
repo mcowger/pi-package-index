@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { loadState, saveState, isReviewed, markReviewed } from './state.js';
-import { searchNpmPackages, fetchPackageData, SEARCH_QUERY } from './npm.js';
+import { searchNpmPackages, fetchPackageData, buildSearchObjFromPackage, SEARCH_QUERY } from './npm.js';
 import type { SearchResults } from 'query-registry';
 import { summarizeReadme } from './llm.js';
 import { renderIndex } from './render.js';
@@ -147,6 +147,130 @@ async function gitCommitAndPush(message: string): Promise<void> {
 }
 
 // ── Core pipeline ───────────────────────────────────────────
+
+async function repair(): Promise<void> {
+  validateEnv();
+
+  const existing = readExistingPackages();
+  if (existing.length === 0) {
+    console.log('⚠️  No packages.json found. Run fetch first.');
+    return;
+  }
+
+  // Find packages that failed or lack README (and thus lack summary)
+  const toRepair = existing.filter((p) => p.error || !p.readme);
+
+  if (toRepair.length === 0) {
+    console.log('✅ No packages need repair.');
+    return;
+  }
+
+  if (LIMIT > 0 && toRepair.length > LIMIT) {
+    toRepair.length = LIMIT;
+  }
+
+  console.log(`🔧 Repairing ${toRepair.length} package(s)...
+`);
+
+  const saver = new ProgressiveSaver(OUTPUT_DIR, SEARCH_QUERY, 10, 10_000);
+  saver.seed(existing);
+  saver.start();
+
+  const flushOnExit = (): void => {
+    console.log('\n💾 Flushing progress...');
+    saver.stop();
+    process.exit(0);
+  };
+  process.once('SIGINT', flushOnExit);
+  process.once('SIGTERM', flushOnExit);
+
+  initDashboard(fetchLimit, llmLimit, githubLimit);
+  setPackageTotal(toRepair.length);
+
+  const workPromises = toRepair.map((existingPkg) =>
+    (async () => {
+      const searchObj = buildSearchObjFromPackage(existingPkg);
+
+      let pkg = await fetchLimit(async () => {
+        setCurrentPackage(existingPkg.name);
+        await sleep(FETCH_DELAY_MS);
+        try {
+          return await fetchPackageData(searchObj);
+        } catch (err: any) {
+          console.error(`  ❌ Failed to re-fetch ${existingPkg.name}: ${err.message}`);
+          if (EXIT_ON_ERROR) {
+            process.exit(1);
+          }
+          return {
+            ...existingPkg,
+            error: err.message,
+            fetchedAt: new Date().toISOString(),
+          };
+        }
+      });
+
+      incPackagesDone();
+
+      if (pkg.readme) {
+        addCurrentLlm(pkg.name);
+        const summary = await llmLimit(() => summarizeReadme(pkg.readme!, pkg.name));
+        removeCurrentLlm(pkg.name);
+        incLlmDone();
+
+        if (summary) {
+          logLine(`✅ Summarized ${pkg.name}`);
+        } else {
+          logLine(`⚠️  Summarization failed for ${pkg.name}`);
+          if (EXIT_ON_ERROR) {
+            process.exit(1);
+          }
+        }
+
+        pkg = { ...pkg, summary };
+      }
+
+      saver.markComplete(pkg);
+      return pkg;
+    })(),
+  );
+
+  const results = await Promise.all(workPromises);
+
+  stopDashboard();
+  saver.stop();
+  process.off('SIGINT', flushOnExit);
+  process.off('SIGTERM', flushOnExit);
+
+  // Overwrite packages.json with the repaired set
+  const allPackages = saver.getPackages();
+  const packagesJson: PackagesJson = {
+    generatedAt: new Date().toISOString(),
+    query: SEARCH_QUERY,
+    total: allPackages.length,
+    packages: allPackages,
+  };
+
+  const { writePackagesJson } = await import('./render.js');
+  writePackagesJson(packagesJson, OUTPUT_DIR);
+
+  // Failure summary
+  const failures = results.filter((p) => p.error);
+  if (failures.length > 0) {
+    console.log(`\n📋 Repair failures (${failures.length} package${failures.length === 1 ? '' : 's'}):`);
+    for (const p of failures) {
+      console.log(`  ❌ ${p.name} — ${p.error}`);
+    }
+    writeErrorsJson(failures, OUTPUT_DIR);
+    console.log(`  📝 errors.json → ${path.join(OUTPUT_DIR, 'errors.json')}`);
+  } else {
+    console.log('\n✅ All repairs succeeded.');
+    try {
+      fs.unlinkSync(path.join(OUTPUT_DIR, 'errors.json'));
+    } catch { /* ok */ }
+  }
+
+  console.log(`\n💾 packages.json → ${path.join(OUTPUT_DIR, 'packages.json')}`);
+}
 
 async function fetch(): Promise<void> {
   validateEnv();
@@ -442,6 +566,7 @@ function printUsage(): void {
 Commands:
   fetch    Search npm and gather package data (writes packages.json)
   render   Render packages.json to index.html
+  repair   Re-fetch packages with errors or missing READMEs
   run      Fetch + render + git push (one-shot)
   daemon   Run on a CRON_SCHEDULE, fetch + render + push each cycle
   (none)   Same as 'run'
@@ -464,6 +589,9 @@ async function main(): Promise<void> {
       break;
     case 'render':
       await render();
+      break;
+    case 'repair':
+      await repair();
       break;
     case 'run':
       await runOnce();
