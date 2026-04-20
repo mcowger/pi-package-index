@@ -47,7 +47,20 @@ async function getModel() {
 
   // Fallback: if we couldn't load a model list, construct one manually
   if (!selectedModel) {
-    selectedModel = { id: modelName || 'gpt-4o-mini', name: modelName || 'gpt-4o-mini' };
+    selectedModel = {
+      id: modelName || 'gpt-4o-mini',
+      name: modelName || 'gpt-4o-mini',
+    };
+  }
+
+  // Ensure capabilities exist — multi-llm-ts accesses model.capabilities.{reasoning,vision,tools,caching}
+  if (!selectedModel.capabilities) {
+    selectedModel.capabilities = {
+      reasoning: false,
+      vision: false,
+      tools: false,
+      caching: false,
+    };
   }
 
   const modelId = selectedModel.id || selectedModel.name || 'unknown';
