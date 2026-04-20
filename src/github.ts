@@ -7,6 +7,8 @@ export const githubLimit = pLimit({ concurrency: 5 });
 let _octokit: Octokit | null = null;
 let _authed: boolean | null = null;
 
+const noopLogger = { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
+
 function getOctokit(): Octokit {
   if (!_octokit) {
     const token = process.env.GH_TOKEN;
@@ -14,7 +16,7 @@ function getOctokit(): Octokit {
     if (!token) {
       console.warn('⚠️  No GH_TOKEN set. Unauthenticated API limit is 60 requests/hour.');
     }
-    _octokit = new Octokit(token ? { auth: token } : {});
+    _octokit = new Octokit(token ? { auth: token, log: noopLogger } : { log: noopLogger });
   }
   return _octokit;
 }
