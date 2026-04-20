@@ -54,6 +54,8 @@ export async function searchNpmPackages(): Promise<Map<string, SearchResults['ob
  * Falls back to GitHub repository README if npm has none or it's very short.
  */
 async function fetchPackageReadme(name: string, repoUrl: string | null): Promise<{ readme: string | null; source: 'npm' | 'github' | null; stars: number | null }> {
+  let npmReadme: string | null = null;
+
   // Try npm packument first
   try {
     const packument = await getPackument(name);
@@ -61,7 +63,8 @@ async function fetchPackageReadme(name: string, repoUrl: string | null): Promise
       return { readme: packument.readme, source: 'npm', stars: null };
     }
     if (packument.readme) {
-      console.log(`    📄 ${name}: npm README too short (${packument.readme.length} chars), trying GitHub...`);
+      npmReadme = packument.readme;
+      console.log(`    📄 ${name}: npm README short (${packument.readme.length} chars), trying GitHub...`);
     } else {
       console.log(`    📄 ${name}: no README on npm, trying GitHub...`);
     }
@@ -72,6 +75,10 @@ async function fetchPackageReadme(name: string, repoUrl: string | null): Promise
   // Fall back to GitHub
   const gh = parseGitHubRepo(repoUrl);
   if (!gh) {
+    if (npmReadme) {
+      console.log(`    ✅ ${name}: using short npm README (${npmReadme.length} chars)`);
+      return { readme: npmReadme, source: 'npm', stars: null };
+    }
     console.log(`    📄 ${name}: no repository link, giving up`);
     return { readme: null, source: null, stars: null };
   }
@@ -81,11 +88,16 @@ async function fetchPackageReadme(name: string, repoUrl: string | null): Promise
 
   if (readme) {
     console.log(`    ✅ ${name}: README from GitHub (${readme.length} chars)`);
-  } else {
-    console.log(`    ❌ ${name}: no README on GitHub either (${gh.owner}/${gh.repo})`);
+    return { readme, source: 'github' as const, stars };
   }
 
-  return { readme, source: readme ? 'github' : null, stars };
+  if (npmReadme) {
+    console.log(`    ✅ ${name}: using short npm README (${npmReadme.length} chars)`);
+    return { readme: npmReadme, source: 'npm', stars };
+  }
+
+  console.log(`    ❌ ${name}: no README on GitHub either (${gh.owner}/${gh.repo})`);
+  return { readme: null, source: null, stars };
 }
 
 /**
