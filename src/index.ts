@@ -266,7 +266,7 @@ async function fetch(): Promise<void> {
     })(),
   );
 
-  await Promise.all(workPromises);
+  const results = await Promise.all(workPromises);
 
   stopDashboard();
   saver.stop();
@@ -278,11 +278,33 @@ async function fetch(): Promise<void> {
   // Final state save
   saveState(STATE_FILE, state);
 
+  // Failure summary
+  const failures = results.filter((p) => p.error);
+  if (failures.length > 0) {
+    console.log(`\n📋 Failure Summary (${failures.length} package${failures.length === 1 ? '' : 's'}):`);
+    for (const p of failures) {
+      console.log(`  ❌ ${p.name} — ${p.error}`);
+    }
+    writeErrorsJson(failures, OUTPUT_DIR);
+    console.log(`  📝 errors.json → ${path.join(OUTPUT_DIR, 'errors.json')}`);
+  }
+
   console.log(`\n💾 packages.json → ${path.join(OUTPUT_DIR, 'packages.json')}`);
 }
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+function writeErrorsJson(failures: PackageData[], outputDir: string): void {
+  const slim = failures.map((p) => ({
+    name: p.name,
+    version: p.version,
+    error: p.error,
+    fetchedAt: p.fetchedAt,
+  }));
+  const filepath = path.join(outputDir, 'errors.json');
+  fs.writeFileSync(filepath, JSON.stringify({ count: slim.length, failures: slim }, null, 2), 'utf-8');
 }
 
 function readExistingPackages(): PackageData[] {
