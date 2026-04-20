@@ -164,7 +164,9 @@ export function generateHtml(data: PackagesJson): string {
 <script>
 (function(){
   const data = JSON.parse(document.getElementById('pkg-data').textContent);
-  const allPackages = data.packages || [];
+  const allPackages = (data.packages || []).slice().sort(function(a, b) {
+    return new Date(b.date) - new Date(a.date);
+  });
   const grid = document.getElementById('grid');
   const searchInput = document.getElementById('search');
   const stats = document.getElementById('stats');
