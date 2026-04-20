@@ -1,0 +1,415 @@
+import 'dotenv/config';
+import pLimit from 'p-limit';
+import git from 'isomorphic-git';
+import fs from 'node:fs';
+import path from 'node:path';
+
+import { loadState, saveState, isReviewed, markReviewed } from './state.js';
+import { searchNpmPackages, fetchPackages, SEARCH_QUERY } from './npm.js';
+import { summarizeReadme } from './llm.js';
+import { writePackagesJson, renderIndex } from './render.js';
+import { githubLimit } from './github.js';
+import {
+  initDashboard, stopDashboard,
+  setPackageTotal, incPackagesDone, incLlmDone,
+  setCurrentPackage, addCurrentLlm, removeCurrentLlm,
+  logLine,
+} from './dashboard.js';
+import type { PackageData, PackagesJson, ReviewedPackage } from './types.js';
+
+// ── Configuration ──────────────────────────────────────────
+const OUTPUT_DIR = process.env.OUTPUT_DIR || './output';
+const STATE_FILE = process.env.STATE_FILE || './state/reviewed.json';
+const FETCH_CONCURRENCY = parseInt(process.env.FETCH_CONCURRENCY || '3', 10);
+const LLM_CONCURRENCY = parseInt(process.env.LLM_CONCURRENCY || '3', 10);
+const CRON_SCHEDULE = process.env.CRON_SCHEDULE || '';
+const GIT_REPO_URL = process.env.GIT_REPO_URL || '';
+const GIT_REPO_DIR = process.env.GIT_REPO_DIR || '/repo';
+
+function validateEnv(): void {
+  const required = ['LLM_API_KEY'];
+  const missing = required.filter((k) => !process.env[k]);
+  if (missing.length > 0) {
+    console.error(`Missing required environment variables: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+}
+
+// ── Concurrency limiters ───────────────────────────────────
+const fetchLimit = pLimit({ concurrency: FETCH_CONCURRENCY });
+const llmLimit = pLimit({ concurrency: LLM_CONCURRENCY });
+
+// ── Git helpers ─────────────────────────────────────────────
+
+async function gitInitOrPull(): Promise<void> {
+  if (!GIT_REPO_URL) {
+    console.log('  ⚠️  No GIT_REPO_URL set, skipping git operations');
+    return;
+  }
+
+  const dir = GIT_REPO_DIR;
+  const token = process.env.GH_TOKEN;
+  const auth = { username: 'pi-bot', password: token };
+  const http = await import('isomorphic-git/http/node').then(m => m.default);
+  const url = token
+    ? GIT_REPO_URL.replace('https://', `https://pi-bot:${token}@`)
+    : GIT_REPO_URL;
+
+  if (!fs.existsSync(path.join(dir, '.git'))) {
+    console.log(`📋 Cloning ${GIT_REPO_URL} → ${dir}...`);
+    await git.clone({ fs, http, dir, url, onAuth: () => auth, singleBranch: true, depth: 50 });
+    console.log('  ✅ Repo cloned');
+  } else {
+    try {
+      const branch = (await git.currentBranch({ fs, dir })) || 'main';
+      const remote = (await git.listRemotes({ fs, dir }))[0]?.remote || 'origin';
+      await git.pull({ fs, http, dir, remote, ref: branch, url, onAuth: () => auth, singleBranch: true });
+      console.log('  ✅ Repo pulled');
+    } catch {
+      console.log('  ⚠️  Pull failed (may be ahead of remote)');
+    }
+  }
+
+  process.chdir(dir);
+}
+
+async function gitCommitAndPush(message: string): Promise<void> {
+  if (!GIT_REPO_URL) return;
+
+  try {
+    const dir = process.cwd();
+    const token = process.env.GH_TOKEN;
+    const remote = (await git.listRemotes({ fs, dir }))[0]?.remote || 'origin';
+    const branch = (await git.currentBranch({ fs, dir })) || 'main';
+    const repoUrl = token
+      ? GIT_REPO_URL.replace('https://', `https://pi-bot:${token}@`)
+      : GIT_REPO_URL;
+
+    const auth = { username: 'pi-bot', password: token };
+    const http = await import('isomorphic-git/http/node').then(m => m.default);
+
+    const pattern = 'output/';
+    const matrix = await git.statusMatrix({ fs, dir, filter: (f: string) => f.startsWith(pattern) });
+
+    const changed = matrix.filter((row: Array<string | number>) => {
+      return row[0] === 0 && row[1] === 0
+        || row[1] !== row[2];
+    });
+
+    if (changed.length === 0) {
+      console.log('  📭 No changes to commit');
+      return;
+    }
+
+    for (const [filepath] of changed) {
+      await git.add({ fs, dir, filepath });
+    }
+
+    let hasRealChanges = false;
+    for (const [filepath, headSha] of changed) {
+      if (headSha === 0) {
+        hasRealChanges = true;
+        break;
+      }
+      try {
+        const headOid = await git.resolveRef({ fs, dir, ref: 'HEAD' });
+        const headBlob = await git.readBlob({ fs, dir, oid: headOid, filepath: String(filepath) });
+        const headContent = Buffer.from(headBlob.blob).toString('utf-8');
+        const workContent = fs.readFileSync(path.join(dir, String(filepath)), 'utf-8');
+        if (headContent !== workContent) {
+          hasRealChanges = true;
+          break;
+        }
+      } catch {
+        hasRealChanges = true;
+        break;
+      }
+    }
+
+    if (!hasRealChanges) {
+      console.log('  📭 No content changes to commit');
+      try { await git.resetIndex({ fs, dir, filepath: '.' }); } catch { /* ok */ }
+      return;
+    }
+
+    await git.commit({ fs, dir, message, author: { name: 'pi-bot', email: 'bot@pi.local' } });
+    await git.push({ fs, http, dir, remote, ref: branch, url: repoUrl, onAuth: () => auth, force: true });
+
+    console.log(`  📤 Pushed: ${message}`);
+  } catch (err) {
+    console.error(`  ❌ Git push failed: ${err instanceof Error ? err.message : err}`);
+  }
+}
+
+// ── Core pipeline ───────────────────────────────────────────
+
+async function runSummaries(packages: PackageData[]): Promise<PackageData[]> {
+  return await Promise.all(
+    packages.map((pkg) =>
+      llmLimit(async () => {
+        if (!pkg.readme) return pkg;
+
+        addCurrentLlm(pkg.name);
+        const summary = await summarizeReadme(pkg.readme, pkg.name);
+        removeCurrentLlm(pkg.name);
+        incLlmDone();
+
+        if (summary) {
+          logLine(`✅ Summarized ${pkg.name}`);
+        } else {
+          logLine(`⚠️  Summarization failed for ${pkg.name}`);
+        }
+
+        return { ...pkg, summary };
+      }),
+    ),
+  );
+}
+
+async function fetch(): Promise<void> {
+  validateEnv();
+
+  const state = loadState(STATE_FILE);
+
+  console.log('🔍 Searching npm registry...\n');
+  const searchResults = await searchNpmPackages();
+
+  // Determine which packages need fetching
+  const skipNames = new Set<string>();
+  for (const [name, obj] of searchResults) {
+    if (isReviewed(state, name, obj.package.version)) {
+      skipNames.add(name);
+    }
+  }
+
+  const toFetchCount = searchResults.size - skipNames.size;
+
+  if (toFetchCount === 0 && skipNames.size === 0) {
+    console.log('✅ No packages found.');
+    return;
+  }
+
+  if (toFetchCount === 0) {
+    console.log(`\n✅ All ${skipNames.size} package(s) up to date.`);
+    return;
+  }
+
+  initDashboard(fetchLimit, llmLimit, githubLimit);
+  setPackageTotal(toFetchCount);
+
+  const newPackages = await fetchPackages(searchResults, skipNames, FETCH_CONCURRENCY, {
+    onStart: (name) => setCurrentPackage(name),
+    onDone: () => incPackagesDone(),
+  });
+
+  console.log('\n🧠 Running LLM summarization...\n');
+  const summarized = await runSummaries(newPackages);
+
+  stopDashboard();
+
+  // Update state
+  for (const pkg of summarized) {
+    const updated = markReviewed(state, {
+      name: pkg.name,
+      version: pkg.version,
+      fetchedAt: pkg.fetchedAt,
+    });
+    Object.assign(state, updated);
+  }
+  saveState(STATE_FILE, state);
+
+  // Merge with existing packages.json if present
+  const existing = readExistingPackages();
+  const merged = mergePackages(existing, summarized);
+
+  const packagesJson: PackagesJson = {
+    generatedAt: new Date().toISOString(),
+    query: SEARCH_QUERY,
+    total: merged.length,
+    packages: merged,
+  };
+
+  const jsonPath = writePackagesJson(packagesJson, OUTPUT_DIR);
+  console.log(`\n💾 packages.json → ${jsonPath}`);
+}
+
+function readExistingPackages(): PackageData[] {
+  try {
+    const raw = fs.readFileSync(path.join(OUTPUT_DIR, 'packages.json'), 'utf-8');
+    const data = JSON.parse(raw) as PackagesJson;
+    return data.packages || [];
+  } catch {
+    return [];
+  }
+}
+
+function mergePackages(existing: PackageData[], fresh: PackageData[]): PackageData[] {
+  const map = new Map<string, PackageData>();
+  for (const p of existing) {
+    map.set(p.name, p);
+  }
+  for (const p of fresh) {
+    map.set(p.name, p);
+  }
+  return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+async function render(): Promise<void> {
+  console.log('🎨 Pi Package Index — render\n');
+  renderIndex(OUTPUT_DIR);
+}
+
+async function runOnce(): Promise<void> {
+  console.log(`${'═'.repeat(50)}`);
+  console.log(`  Pi Package Index — ${new Date().toISOString()}`);
+  console.log(`${'═'.repeat(50)}\n`);
+
+  await gitInitOrPull();
+
+  await fetch();
+  console.log();
+  await render();
+
+  const dateStr = new Date().toISOString().slice(0, 10);
+  await gitCommitAndPush(`📦 update packages ${dateStr}`);
+}
+
+function getNextCronDelay(expression: string): number {
+  const parts = expression.trim().split(/\s+/);
+  if (parts.length !== 5) throw new Error(`Invalid cron: ${expression}`);
+
+  const [minuteField, hourField] = parts;
+
+  const parseField = (field: string, min: number, max: number): number[] => {
+    if (field === '*') return Array.from({ length: max - min + 1 }, (_, i) => min + i);
+    if (field.startsWith('*/')) {
+      const step = parseInt(field.slice(2), 10);
+      return Array.from({ length: Math.floor((max - min) / step) + 1 }, (_, i) => min + i * step);
+    }
+    return field.split(',').map(Number);
+  };
+
+  const minutes = parseField(minuteField, 0, 59);
+  const hours = parseField(hourField, 0, 23);
+
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  for (let offset = 0; offset < 48; offset++) {
+    const day = new Date(startOfToday);
+    day.setDate(day.getDate() + offset);
+
+    for (const h of hours) {
+      for (const m of minutes) {
+        const candidate = new Date(day.getFullYear(), day.getMonth(), day.getDate(), h, m, 0);
+        if (candidate.getTime() > now.getTime()) {
+          return candidate.getTime() - now.getTime();
+        }
+      }
+    }
+  }
+
+  return 6 * 60 * 60 * 1000;
+}
+
+async function daemon(): Promise<void> {
+  if (!CRON_SCHEDULE) {
+    console.error('CRON_SCHEDULE is required for daemon mode. e.g. "0 */6 * * *"');
+    process.exit(1);
+  }
+
+  console.log(`🕐 Daemon mode — schedule: ${CRON_SCHEDULE}\n`);
+
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let running = true;
+
+  const cleanup = (): void => {
+    if (!running) return;
+    running = false;
+    if (timer) clearTimeout(timer);
+    console.log('\n🛑 Shutting down...');
+    process.exit(0);
+  };
+
+  process.on('SIGTERM', cleanup);
+  process.on('SIGINT', cleanup);
+
+  try {
+    await runOnce();
+  } catch (err) {
+    console.error(`Run failed: ${err instanceof Error ? err.message : err}`);
+  }
+
+  if (!running) return;
+
+  const scheduleNext = (): void => {
+    if (!running) return;
+    const delay = getNextCronDelay(CRON_SCHEDULE);
+    const next = new Date(Date.now() + delay);
+    console.log(`\n⏰ Next run at ${next.toISOString()} (in ${Math.round(delay / 60000)} min)\n`);
+
+    timer = setTimeout(async () => {
+      if (!running) return;
+      try {
+        await runOnce();
+      } catch (err) {
+        console.error(`Run failed: ${err instanceof Error ? err.message : err}`);
+      }
+      scheduleNext();
+    }, delay);
+  };
+
+  scheduleNext();
+}
+
+// ── CLI ─────────────────────────────────────────────────────
+function printUsage(): void {
+  console.log(`Usage: bun run src/index.ts <command>
+
+Commands:
+  fetch    Search npm and gather package data (writes packages.json)
+  render   Render packages.json to index.html
+  run      Fetch + render + git push (one-shot)
+  daemon   Run on a CRON_SCHEDULE, fetch + render + push each cycle
+  (none)   Same as 'run'
+
+Environment variables:
+  CRON_SCHEDULE        Cron expression for daemon mode (e.g. "0 */6 * * *")
+  FETCH_CONCURRENCY    Max parallel npm packument fetches (default: 3)
+  LLM_CONCURRENCY      Max parallel LLM calls (default: 3)`);
+}
+
+async function main(): Promise<void> {
+  const command = process.argv[2];
+
+  switch (command) {
+    case 'fetch':
+      await fetch();
+      break;
+    case 'render':
+      await render();
+      break;
+    case 'run':
+      await runOnce();
+      break;
+    case 'daemon':
+      await daemon();
+      break;
+    case undefined:
+      await runOnce();
+      break;
+    case '--help':
+    case '-h':
+      printUsage();
+      break;
+    default:
+      console.error(`Unknown command: "${command}"\n`);
+      printUsage();
+      process.exit(1);
+  }
+}
+
+main().catch((err) => {
+  console.error('Fatal error:', err);
+  process.exit(1);
+});

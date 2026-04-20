@@ -1,0 +1,19 @@
+# Output — we commit these for GitHub Pages
+# output/
+
+# State — not committed, local only
+state/
+
+# Dependencies
+node_modules/
+
+# Environment
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store

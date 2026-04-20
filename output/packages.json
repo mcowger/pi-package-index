@@ -1,0 +1,65 @@
+{
+  "generatedAt": "2026-04-20T00:00:00.000Z",
+  "query": "keywords:pi-package",
+  "total": 3,
+  "packages": [
+    {
+      "name": "pi-subagents",
+      "version": "0.17.1",
+      "description": "Subagent toolkit for Pi",
+      "keywords": ["pi-package", "ai", "agents"],
+      "date": "2026-04-15T00:00:00.000Z",
+      "publisher": "alice",
+      "links": {
+        "npm": "https://www.npmjs.com/package/pi-subagents",
+        "homepage": null,
+        "repository": "https://github.com/alice/pi-subagents",
+        "bugs": null
+      },
+      "readme": "# pi-subagents\n\nA toolkit for building subagents in Pi.",
+      "readmeSource": "npm",
+      "summary": "A toolkit for building subagents within the Pi ecosystem, enabling modular AI agent composition.",
+      "stars": 42,
+      "fetchedAt": "2026-04-20T00:00:00.000Z"
+    },
+    {
+      "name": "pi-mcp-adapter",
+      "version": "1.2.0",
+      "description": "MCP adapter for Pi extensions",
+      "keywords": ["pi-package", "mcp", "adapter"],
+      "date": "2026-04-10T00:00:00.000Z",
+      "publisher": "bob",
+      "links": {
+        "npm": "https://www.npmjs.com/package/pi-mcp-adapter",
+        "homepage": "https://pi-mcp.dev",
+        "repository": "https://github.com/bob/pi-mcp-adapter",
+        "bugs": null
+      },
+      "readme": null,
+      "readmeSource": null,
+      "summary": null,
+      "stars": null,
+      "error": "No README found",
+      "fetchedAt": "2026-04-20T00:00:00.000Z"
+    },
+    {
+      "name": "pi-lens",
+      "version": "0.5.3",
+      "description": "Visual search lens for Pi",
+      "keywords": ["pi-package", "vision", "search"],
+      "date": "2026-04-18T00:00:00.000Z",
+      "publisher": "charlie",
+      "links": {
+        "npm": "https://www.npmjs.com/package/pi-lens",
+        "homepage": null,
+        "repository": null,
+        "bugs": null
+      },
+      "readme": "# pi-lens\n\nAdd visual search capabilities to Pi.",
+      "readmeSource": "npm",
+      "summary": "Adds visual search and image understanding capabilities to Pi, allowing users to search using images.",
+      "stars": null,
+      "fetchedAt": "2026-04-20T00:00:00.000Z"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "name": "pi-package-index",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/index.ts"
+  },
+  "dependencies": {
+    "@octokit/rest": "latest",
+    "cli-progress": "^3.12.0",
+    "dotenv": "latest",
+    "isomorphic-git": "^1.37.5",
+    "multi-llm-ts": "latest",
+    "p-limit": "^7.3.0",
+    "query-registry": "latest",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "latest"
+  }
+}
