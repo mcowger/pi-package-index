@@ -25,7 +25,12 @@ async function getModel() {
   }
 
   const config: Record<string, any> = { apiKey };
-  if (baseURL) config.baseURL = baseURL;
+  if (baseURL) {
+    // Ensure baseURL ends with /v1 for OpenAI-compatible endpoints
+    config.baseURL = baseURL.replace(/\/?$/, '').endsWith('/v1')
+      ? baseURL.replace(/\/?$/, '')
+      : baseURL.replace(/\/?$/, '') + '/v1';
+  }
 
   let selectedModel: any;
 
