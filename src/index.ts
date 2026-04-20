@@ -253,12 +253,13 @@ async function repair(): Promise<void> {
   const { writePackagesJson } = await import('./render.js');
   writePackagesJson(packagesJson, OUTPUT_DIR);
 
-  // Failure summary
-  const failures = results.filter((p) => p.error);
+  // Failure summary — a repair failed if error is set OR readme is still missing
+  const failures = results.filter((p) => p.error || !p.readme);
   if (failures.length > 0) {
     console.log(`\n📋 Repair failures (${failures.length} package${failures.length === 1 ? '' : 's'}):`);
     for (const p of failures) {
-      console.log(`  ❌ ${p.name} — ${p.error}`);
+      const reason = p.error || 'No README available';
+      console.log(`  ❌ ${p.name} — ${reason}`);
     }
     writeErrorsJson(failures, OUTPUT_DIR);
     console.log(`  📝 errors.json → ${path.join(OUTPUT_DIR, 'errors.json')}`);
@@ -413,11 +414,12 @@ async function fetch(): Promise<void> {
   saveState(STATE_FILE, state);
 
   // Failure summary
-  const failures = results.filter((p) => p.error);
+  const failures = results.filter((p) => p.error || !p.readme);
   if (failures.length > 0) {
     console.log(`\n📋 Failure Summary (${failures.length} package${failures.length === 1 ? '' : 's'}):`);
     for (const p of failures) {
-      console.log(`  ❌ ${p.name} — ${p.error}`);
+      const reason = p.error || 'No README available';
+      console.log(`  ❌ ${p.name} — ${reason}`);
     }
     writeErrorsJson(failures, OUTPUT_DIR);
     console.log(`  📝 errors.json → ${path.join(OUTPUT_DIR, 'errors.json')}`);
@@ -434,7 +436,7 @@ function writeErrorsJson(failures: PackageData[], outputDir: string): void {
   const slim = failures.map((p) => ({
     name: p.name,
     version: p.version,
-    error: p.error,
+    error: p.error || 'No README available',
     fetchedAt: p.fetchedAt,
   }));
   const filepath = path.join(outputDir, 'errors.json');
