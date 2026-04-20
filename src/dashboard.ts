@@ -185,7 +185,10 @@ function repaint(): void {
 
   w(`${BOLD}Current${RESET}`);
   w(`  PACKAGE  ${s.currentPackage || DIM + '—' + RESET}`);
-  w(`  LLM      ${s.currentLlm.length > 0 ? s.currentLlm.join(', ') : DIM + '—' + RESET}`);
+  const llmShown = 5;
+  const llmSlice = s.currentLlm.slice(0, llmShown);
+  const llmMore = s.currentLlm.length > llmShown ? ` ${DIM}+${s.currentLlm.length - llmShown} more${RESET}` : '';
+  w(`  LLM      ${llmSlice.length > 0 ? llmSlice.join(', ') + llmMore : DIM + '—' + RESET}`);
   w('');
 
   w(`${BOLD}Recent${RESET}`);
