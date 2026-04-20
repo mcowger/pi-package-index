@@ -417,7 +417,8 @@ Commands:
 Environment variables:
   CRON_SCHEDULE        Cron expression for daemon mode (e.g. "0 */6 * * *")
   FETCH_CONCURRENCY    Max parallel npm packument fetches (default: 3)
-  LLM_CONCURRENCY      Max parallel LLM calls (default: 3)`);
+  LLM_CONCURRENCY      Max parallel LLM calls (default: 3)
+  NO_DASHBOARD         Set to 1 to force plain console logs instead of TUI`);
 }
 
 async function main(): Promise<void> {

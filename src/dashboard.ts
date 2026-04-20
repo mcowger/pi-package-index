@@ -21,7 +21,7 @@ const ALT_SCREEN = '\x1b[?1049h';
 const MAIN_SCREEN = '\x1b[?1049l';
 
 function out(s: string): void { process.stdout.write(s); }
-const isTty = process.stdout.isTTY;
+const isTty = process.stdout.isTTY && !process.env.NO_DASHBOARD;
 
 // ── Dashboard state ─────────────────────────────────────────
 interface DashboardState {
