@@ -28,6 +28,8 @@ const CRON_SCHEDULE = process.env.CRON_SCHEDULE || '';
 const GIT_REPO_URL = process.env.GIT_REPO_URL || '';
 const GIT_REPO_DIR = process.env.GIT_REPO_DIR || '/repo';
 const FETCH_DELAY_MS = 300;
+const LIMIT = process.env.LIMIT ? parseInt(process.env.LIMIT, 10) : 0;
+const EXIT_ON_ERROR = process.env.EXIT_ON_ERROR === '1';
 
 function validateEnv(): void {
   const required = ['LLM_API_KEY'];
@@ -166,6 +168,7 @@ async function fetch(): Promise<void> {
   for (const [name, obj] of searchResults) {
     if (!skipNames.has(name)) {
       toFetch.push(obj);
+      if (LIMIT > 0 && toFetch.length >= LIMIT) break;
     }
   }
 
@@ -210,6 +213,9 @@ async function fetch(): Promise<void> {
           return await fetchPackageData(obj);
         } catch (err: any) {
           console.error(`  ❌ Failed to fetch ${obj.package.name}: ${err.message}`);
+          if (EXIT_ON_ERROR) {
+            process.exit(1);
+          }
           return {
             name: obj.package.name,
             version: obj.package.version,
@@ -246,6 +252,9 @@ async function fetch(): Promise<void> {
           logLine(`✅ Summarized ${pkg.name}`);
         } else {
           logLine(`⚠️  Summarization failed for ${pkg.name}`);
+          if (EXIT_ON_ERROR) {
+            process.exit(1);
+          }
         }
 
         pkg = { ...pkg, summary };
@@ -440,7 +449,9 @@ Environment variables:
   CRON_SCHEDULE        Cron expression for daemon mode (e.g. "0 */6 * * *")
   FETCH_CONCURRENCY    Max parallel npm packument fetches (default: 3)
   LLM_CONCURRENCY      Max parallel LLM calls (default: 3)
-  NO_DASHBOARD         Set to 1 to force plain console logs instead of TUI`);
+  NO_DASHBOARD         Set to 1 to force plain console logs instead of TUI
+  LIMIT                Max packages to fetch (for testing)
+  EXIT_ON_ERROR        Set to 1 to exit immediately on any fetch/LLM error`);
 }
 
 async function main(): Promise<void> {
