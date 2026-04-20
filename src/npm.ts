@@ -53,6 +53,22 @@ export async function searchNpmPackages(): Promise<Map<string, SearchResults['ob
  * Fetch the README for a package from its npm packument.
  * Falls back to GitHub repository README if npm has none or it's very short.
  */
+/**
+ * Raw registry fetch that bypasses Zod validation.
+ * Used when getPackument throws due to schema issues in unrelated fields.
+ */
+async function fetchRawPackumentReadme(name: string): Promise<string | null> {
+  try {
+    const encoded = name.replace('/', '%2F');
+    const res = await fetch(`https://registry.npmjs.org/${encoded}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return typeof data.readme === 'string' ? data.readme : null;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchPackageReadme(name: string, repoUrl: string | null): Promise<{ readme: string | null; source: 'npm' | 'github' | null; stars: number | null }> {
   let npmReadme: string | null = null;
 
@@ -69,7 +85,18 @@ async function fetchPackageReadme(name: string, repoUrl: string | null): Promise
       console.log(`    📄 ${name}: no README on npm, trying GitHub...`);
     }
   } catch (err: any) {
-    console.warn(`    ⚠️  ${name}: npm packument failed (${err.message}), trying GitHub...`);
+    console.warn(`    ⚠️  ${name}: npm packument failed (${err.message}), trying raw registry...`);
+    const rawReadme = await fetchRawPackumentReadme(name);
+    if (rawReadme && rawReadme.length >= 200) {
+      console.log(`    ✅ ${name}: README from raw registry (${rawReadme.length} chars)`);
+      return { readme: rawReadme, source: 'npm', stars: null };
+    }
+    if (rawReadme) {
+      npmReadme = rawReadme;
+      console.log(`    📄 ${name}: raw registry README short (${rawReadme.length} chars), trying GitHub...`);
+    } else {
+      console.log(`    📄 ${name}: no README on npm, trying GitHub...`);
+    }
   }
 
   // Fall back to GitHub
