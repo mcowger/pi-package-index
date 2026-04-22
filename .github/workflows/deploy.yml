@@ -1,4 +1,5 @@
 name: Deploy Pages
+disabled: true
 
 on:
   push:

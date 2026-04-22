@@ -1,6 +1,14 @@
+# ⚠️ Archived / Unmaintained
+
+> **This repository is no longer maintained.** The official Pi Package Index is now live at **[https://pi.dev/packages](https://pi.dev/packages)** — please use that instead.
+>
+> This repo is kept purely as an archive. The GitHub Actions workflows have been disabled.
+
+---
+
 # Pi Package Index
 
-A Bun/TypeScript CLI tool that monitors npm for packages tagged with `pi-package`, fetches each package's README, summarizes it with an LLM, and produces a static, searchable card-based index page deployable to GitHub Pages.
+~~A Bun/TypeScript CLI tool that monitors npm for packages tagged with `pi-package`, fetches each package's README, summarizes it with an LLM, and produces a static, searchable card-based index page deployable to GitHub Pages.~~ (see above — this tool is deprecated)
 
 ## Running
 

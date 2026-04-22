@@ -1,4 +1,5 @@
 name: Build & Push Docker Image
+disabled: true
 
 on:
   push:
